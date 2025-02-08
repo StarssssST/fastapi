@@ -32,12 +32,18 @@ FIREBASE_CONFIG = {
 # Initialize Firebase Admin with the configuration
 try:
     if os.environ.get('RAILWAY_ENVIRONMENT'):
-        # Create service account dict from environment variables
+        # Get raw private key and fix formatting
+        private_key = os.environ.get("private_key", "")
+        # Remove any quotes at the start and end
+        private_key = private_key.strip('"').strip("'")
+        # Ensure proper line endings
+        private_key = private_key.replace("\\n", "\n")
+        
         service_account_dict = {
             "type": os.environ.get("type"),
             "project_id": os.environ.get("project_id"),
             "private_key_id": os.environ.get("private_key_id"),
-            "private_key": os.environ.get("private_key").replace("\\n", "\n"),  # Fix newlines
+            "private_key": private_key,
             "client_email": os.environ.get("client_email"),
             "client_id": os.environ.get("client_id"),
             "auth_uri": os.environ.get("auth_uri"),
@@ -46,6 +52,10 @@ try:
             "client_x509_cert_url": os.environ.get("client_x509_cert_url"),
             "universe_domain": os.environ.get("universe_domain")
         }
+        
+        # Debug output
+        print("Private key first line:", private_key.split('\n')[0])
+        print("Private key last line:", private_key.split('\n')[-1])
         
         # Remove None values
         service_account_dict = {k: v for k, v in service_account_dict.items() if v is not None}
@@ -58,6 +68,10 @@ try:
     initialize_app(cred, FIREBASE_CONFIG)
 except Exception as e:
     print(f"Firebase initialization error: {str(e)}")
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        print("Environment variables:")
+        for key in ["type", "project_id", "private_key_id", "client_email"]:
+            print(f"{key}: {os.environ.get(key, 'NOT SET')}")
     raise
 
 class Note(BaseModel):
