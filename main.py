@@ -2,8 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from firebase_admin import credentials, db, initialize_app
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict
 import json
+import os
 
 app = FastAPI()
 
@@ -29,8 +30,35 @@ FIREBASE_CONFIG = {
 }
 
 # Initialize Firebase Admin with the configuration
-cred = credentials.Certificate("snote-proj-firebase-adminsdk-fbsvc-571a0352cd.json")
-initialize_app(cred, FIREBASE_CONFIG)
+try:
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        # Create service account dict from environment variables
+        service_account_dict = {
+            "type": os.environ.get("type"),
+            "project_id": os.environ.get("project_id"),
+            "private_key_id": os.environ.get("private_key_id"),
+            "private_key": os.environ.get("private_key").replace("\\n", "\n"),  # Fix newlines
+            "client_email": os.environ.get("client_email"),
+            "client_id": os.environ.get("client_id"),
+            "auth_uri": os.environ.get("auth_uri"),
+            "token_uri": os.environ.get("token_uri"),
+            "auth_provider_x509_cert_url": os.environ.get("auth_provider_x509_cert_url"),
+            "client_x509_cert_url": os.environ.get("client_x509_cert_url"),
+            "universe_domain": os.environ.get("universe_domain")
+        }
+        
+        # Remove None values
+        service_account_dict = {k: v for k, v in service_account_dict.items() if v is not None}
+        
+        cred = credentials.Certificate(service_account_dict)
+    else:
+        # Local development - use JSON file
+        cred = credentials.Certificate("snote-proj-firebase-adminsdk-fbsvc-571a0352cd.json")
+    
+    initialize_app(cred, FIREBASE_CONFIG)
+except Exception as e:
+    print(f"Firebase initialization error: {str(e)}")
+    raise
 
 class Note(BaseModel):
     title: str
